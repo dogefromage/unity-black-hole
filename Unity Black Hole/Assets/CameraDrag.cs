@@ -36,7 +36,6 @@ public class CameraDrag : MonoBehaviour
         }
 
         distance *= Mathf.Exp(-Input.mouseScrollDelta.y * scrollSensitivity);
-        Debug.Log(Input.mouseScrollDelta.y);
  
         Vector3 pos = Camera.main.ScreenToViewportPoint(Input.mousePosition - dragOrigin);
         Vector3 move = new Vector3(pos.x * dragSpeed, 0, pos.y * dragSpeed);

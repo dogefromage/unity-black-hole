@@ -6,6 +6,7 @@ using UnityEngine;
 public class RaymarchingMaster : MonoBehaviour
 {
     // SHADER
+    public float schwarzschildRadius = 1f;
     public ComputeShader RaymarchingShader;
     private RenderTexture _target;
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
@@ -50,5 +51,8 @@ public class RaymarchingMaster : MonoBehaviour
     {
         RaymarchingShader.SetMatrix("_CameraToWorld", _camera.cameraToWorldMatrix);
         RaymarchingShader.SetMatrix("_CameraInverseProjection", _camera.projectionMatrix.inverse);
+        RaymarchingShader.SetFloat("_RS", schwarzschildRadius);
+
+        RaymarchingShader.SetBool("_Normal", Input.GetButton("Jump"));
     }
 }

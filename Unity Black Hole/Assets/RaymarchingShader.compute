@@ -4,50 +4,141 @@ RWTexture2D<float4> Result;
 float4x4 _CameraToWorld;
 float4x4 _CameraInverseProjection;
 
+Texture2D _Background;
+
+float _RS;
+bool _Normal;
+
 struct Ray
 {
     float3 origin;
     float3 direction;
-
-    float3 at(float t)
-    {
-        return origin + t * direction;
-    }
 };
 
-float4 sdf(float3 p)
+//float4 March(Ray ray)
+//{
+//    float t = 0.;
+//    for (int i = 0; i < 100; i++)
+//    {
+//        float4 map = sdf(ray.at(t));
+//        if (map.w < 0.01)
+//        {
+//            return map;
+//        }
+//        else if (t > 100.)
+//        {
+//            break;
+//        }
+//
+//        t += map.w;
+//    }
+//
+//    return float4(0., 0., 0., 100.);
+//}
+
+float3 toSpherical(float3 pos)
 {
-    float d = length(p) - 1.;
-    return float4(p.xyz*0.5+0.5, d);
+    float r = length(pos);
+    float phi = atan2(pos.z, pos.x); // y and z switched
+    float theta = acos(pos.y / r);
+    return float3(r, theta, phi);
 }
 
-float4 March(Ray ray)
+float3 calculateBackground(float3 dir)
 {
-    float t = 0.;
-    for (int i = 0; i < 100; i++)
-    {
-        float4 map = sdf(ray.at(t));
-        if (map.w < 0.01)
-        {
-            return map;
-        }
-        else if (t > 100.)
-        {
-            break;
-        }
+    //return dir * 0.5 + 0.5;
+    //return float3(0, 0, 0.3);
 
-        t += map.w;
+
+    float3 spherical = toSpherical(dir);
+    float step = 0.7853*0.25; // PI / 4;
+    bool thetaMod = (spherical.y + 6.283) % step * 2. > step;
+    bool phiMod = (spherical.z + 6.283) % step * 2. > step;
+
+    if (thetaMod ^ phiMod)
+    {
+        return float3(0, 0, 0.5);
+    }
+    else
+    {
+        return float3(0, 0, 0.2);
+    }
+}
+
+float3 bhColor(float3 pos)
+{
+    // SHOW ANGLES
+    float3 spherical = toSpherical(pos);
+    float step = 0.7853; // PI / 4;
+    bool thetaMod = (spherical.y + 6.283) % step * 2. > step;
+    bool phiMod = (spherical.z + 6.283) % step * 2. > step;
+
+    if (thetaMod ^ phiMod)
+    {
+        return float3(1, 0, 0);
+    }
+    else
+    {
+        return float3(0.3, 0, 0);
     }
 
-    return float4(0., 0., 0., 100.);
+    //return float3(0, 0, 0);
 }
 
 float4 Render(Ray ray)
 {
-    float4 color = March(ray);
-    return float4(color.xyz, 1.0);
+    float3 color = float3(0, 0, 0);
 
-    // return float4(ray.direction * 0.5f + 0.5f, 1.0f);
+
+    if (_Normal)
+    {
+        for (int i = 0; i < 100; i++)
+        {
+            float r = length(ray.origin);
+            float d = r - _RS;
+
+            if (d < 0.001)
+            {
+                return float4(bhColor(ray.origin).xyz, 1.);
+            }
+
+            ray.origin += ray.direction * d;
+        }
+    }
+    else
+    {
+        for (int i = 0; i < 100; i++)
+        {
+            // Physics adapted from set111's 3D black hole https://www.shadertoy.com/view/tsBXW3
+            float r = length(ray.origin);                   // distance to BH
+
+            if (r < _RS)
+            {
+                return float4(bhColor(ray.origin).xyz, 1);
+            }
+            else if (r > 50 * _RS)
+            {
+                break;
+            }
+
+            //float d = min(.92,// * abs(O.y /O.w) ,  // conservative distance to disk (y==0)   
+            //    min(r * .5,                 // limit step size far from to BH 
+            //        r * .1 + .05 * r * r / _RS     // limit step size close to BH 
+            //    ));
+
+            float dist = (r - _RS);
+            float d = min(.92, 0.01 + 0.15 * dist + 0.1 / r * dist*dist);
+            d = max(d, 0);
+            float F = _RS * 1.5 / (r * r);             // bending force
+            ray.direction = normalize(ray.direction - d * F * ray.origin / r); // bend ray towards BH
+            //O.xy += d * O.zw;
+            ray.origin += d * ray.direction;
+
+        }
+    }
+    
+    color += calculateBackground(ray.direction);
+    return float4(color.xyz, 0.);
 }
 
 Ray CreateRay(float3 origin, float3 direction)
@@ -78,9 +169,24 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     uint width, height;
     Result.GetDimensions(width, height);
     // Transform pixel to [-1,1] range
-    float2 uv = float2((id.xy + float2(0.5f, 0.5f)) / float2(width, height) * 2.0f - 1.0f);
     // Get a ray for the UVs
-    Ray ray = CreateCameraRay(uv);
-    // Write some colors
-    Result[id.xy] = Render(ray);
+
+    int AA = 2;
+
+    float4 col = float4(0, 0, 0, 0);
+
+    for (int x = 0; x < AA; x++)
+    {
+        for (int y = 0; y < AA; y++)
+        {
+            float2 pix = id.xy + (float2(x, y) - (AA - 1) / 2) / AA;
+            float2 uv = float2((pix + float2(0.5f, 0.5f)) / float2(width, height) * 2.0f - 1.0f);
+            Ray ray = CreateCameraRay(uv);
+            col += Render(ray);
+        }
+    }
+
+    col /= AA * AA;
+    Result[id.xy] = col;
+
 }
