@@ -7,6 +7,8 @@ public class RaymarchingMaster : MonoBehaviour
 {
     // SHADER
     public float schwarzschildRadius = 1f;
+    public Texture2D skyTexture;
+    public Texture2D perlin;
     public ComputeShader RaymarchingShader;
     private RenderTexture _target;
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
@@ -54,5 +56,7 @@ public class RaymarchingMaster : MonoBehaviour
         RaymarchingShader.SetFloat("_RS", schwarzschildRadius);
 
         RaymarchingShader.SetBool("_Normal", Input.GetButton("Jump"));
+        RaymarchingShader.SetTexture(0, "_SkyTexture", skyTexture);
+        RaymarchingShader.SetTexture(0, "_Perlin", perlin);
     }
 }

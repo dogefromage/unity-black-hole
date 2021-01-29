@@ -219,7 +219,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5c98198f218e8b49804bedd9731b219, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  schwarzschildRadius: 0.3
+  schwarzschildRadius: 0.2
+  skyTexture: {fileID: 2800000, guid: a4349d33e1b7f934193a34befedf473b, type: 3}
+  perlin: {fileID: 2800000, guid: 0a4b259af4144154687658de5ec97113, type: 3}
   RaymarchingShader: {fileID: 7200000, guid: b930c64eafbdc404182267819fd4fc57, type: 3}
 --- !u!1 &1638805808
 GameObject:
@@ -250,7 +252,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2e11f34b8993adb48b2e202134369a0e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  dragSpeed: 200
+  dragSpeed: 100
   scrollSensitivity: 0.1
   camera: {fileID: 963194228}
 --- !u!4 &1638805810
